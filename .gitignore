@@ -1,0 +1,6 @@
+log
+*.beam
+*.dump
+tmp/mnesia
+deps
+/ebin/*

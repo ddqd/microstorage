@@ -1,0 +1,10 @@
+{application,microstorage,
+             [{description,[]},
+              {vsn,"1"},
+              {registered,[]},
+              {applications,[kernel,stdlib]},
+              {mod,{microstorage_app,[]}},
+              {env,[]},
+              {modules,[microstorage_api_handler,microstorage_api_srv,
+                        microstorage_app,microstorage_db_srv,
+                        microstorage_sup]}]}.
