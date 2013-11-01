@@ -13,7 +13,11 @@
          code_change/3]).
  
 -record(state, {}).
- 
+
+-record(storage, {name=[], content=[]}).
+
+-record(store, {uuid, storage=#storage{}}).
+
 start_link() ->
     gen_server:start_link({local, ?MODULE}, ?MODULE, [], []).
  
