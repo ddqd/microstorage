@@ -1,4 +1,3 @@
-
 ##Erlang microstorage
 ---
 ####dependencies
@@ -24,7 +23,7 @@
 
 `delete /api/uuid=123&name=123`
 
-`post` /api/  {"uuid":"123", "name":"name", "data":[{"key":"value"}, {"key1":"value1"}]}
+`post  /api/   {"uuid":"123", "name":"name", "data":[{"key":"value"}, {"key1":"value1"}]}`
 
 ---
 ####Example
