@@ -20,7 +20,7 @@ run:
 	erl -sname $(NODENAME) -config config/microstorage.config -pa apps/*/ebin deps/*/ebin -eval '[application:start(A) || A <- [kernel,  asn1, crypto, public_key, mimetypes, lager, ranch, inets, ssl, sync, quickrand, uuid, mnesia, emysql, cowlib, cowboy, ibrowse, microstorage] ]'
 
 shell:
-	rebar compile
+	rebar compile 	
 	(mkdir -p tmp)
 	erl +K true -sname $(NODENAME) -config config/$(NODE) -setcookie $(COOKIE) -pa apps/*/ebin deps/*/ebin -eval '[application:start(A) || A <- [kernel, crypto, lager, ranch, inets, sync, uuid, poolboy, mnesia]]'
 

@@ -6,9 +6,9 @@
 
 -export([install/0]).
 
--export([get_data/2, store_data/3, remove_data/2]).
- 
 -include_lib("stdlib/include/qlc.hrl").
+
+-include("microstorage.hrl").
 
 %% gen_server callbacks
 -export([init/1,
@@ -18,14 +18,24 @@
          terminate/2,
          code_change/3]).
 
--record(storage, {uuid, name=[], data=[]}).
-
 start_link() ->
     gen_server:start_link({local, ?MODULE}, ?MODULE, [], []).
  
 init([]) ->
-    {ok}.
- 
+    {ok, started}.
+
+handle_call({get, Uuid, Name}, _From, State) ->
+    Reply = get_data(Uuid, Name),
+    {reply, Reply, State};
+
+handle_call({store, Uuid, Name, Data}, _From, State) ->
+    Reply = store_data(Uuid, Name, Data),
+    {reply, Reply, State};
+
+handle_call({delete, Uuid, Name}, _From, State) ->
+    Reply = remove_data(Uuid, Name),
+    {reply, Reply, State};
+
 handle_call(_Request, _From, State) ->
     {reply, ignored, State}.
 
@@ -84,8 +94,10 @@ get_data(Uuid, Name) ->
 store_data(Uuid, Name, Data) ->
     F = fun() ->
         case get_data(Uuid, Name) of
-            {error, not_found} -> mnesia:write(#storage{uuid = Uuid, name  = Name, data = Data});
-            _ -> {error, already_exists}
+            {error, not_found} -> 
+                mnesia:write(#storage{uuid = Uuid, name  = Name, data = Data});
+            _ -> 
+                {error, already_exists}
         end
     end,
     transaction(F).

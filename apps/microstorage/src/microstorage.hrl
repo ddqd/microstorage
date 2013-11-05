@@ -1,0 +1,1 @@
+-record(storage, {uuid, name=[], data=[]}).

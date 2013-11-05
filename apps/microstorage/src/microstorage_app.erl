@@ -14,7 +14,7 @@ start(_StartType, _StartArgs) ->
 	{_, Port} = Config, 
 	Dispatch = cowboy_router:compile([
 		{'_', [
-			{"/", microstorage_api_handler, []}
+			{"/:path", microstorage_api_handler, []}
 		]}
 	]),
 	{ok, _} = cowboy:start_http(http, 100, [Config], [
