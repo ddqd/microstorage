@@ -5,7 +5,11 @@
 -export([start_link/0]).
 
 -export([install/0]).
+
+-export([get_data/2, store_data/3, remove_data/2]).
  
+-include_lib("stdlib/include/qlc.hrl").
+
 %% gen_server callbacks
 -export([init/1,
          handle_call/3,
@@ -13,18 +17,14 @@
          handle_info/2,
          terminate/2,
          code_change/3]).
- 
--record(state, {}).
 
--record(storage, {name, content=[]}).
-
--record(store, {uuid, storage=#storage{}}).
+-record(storage, {uuid, name=[], data=[]}).
 
 start_link() ->
     gen_server:start_link({local, ?MODULE}, ?MODULE, [], []).
  
 init([]) ->
-    {ok, #state{}}.
+    {ok}.
  
 handle_call(_Request, _From, State) ->
     {reply, ignored, State}.
@@ -44,8 +44,8 @@ code_change(_OldVsn, State, _Extra) ->
 %% Internal functions
 
 create_table() ->
-    case mnesia:create_table(store,
-                [{attributes, record_info(fields, store)},
+    case mnesia:create_table(storage,
+                [{attributes, record_info(fields, storage)},
                 {index, []},
                 {storage_properties,[   
                     {ets, [compressed]}, 
@@ -67,3 +67,39 @@ case  mnesia:create_schema([node()]) of
     Error -> lager:log(info, self(), "Create schema error ~p", [Error])
 end,
 ok.
+
+get_data(Uuid, Name) ->
+    F = fun() ->   
+        Query = qlc:q([ Storage || Storage <- mnesia:table(storage), ((Storage#storage.uuid == Uuid) and (Storage#storage.name == Name))] ),
+        Res = qlc:e(Query),
+        case Res of 
+            [] -> 
+                {error, not_found};
+            [Storage|_] -> 
+                {ok, Storage}
+        end
+    end,
+    transaction(F).
+
+store_data(Uuid, Name, Data) ->
+    F = fun() ->
+        case get_data(Uuid, Name) of
+            {error, not_found} -> mnesia:write(#storage{uuid = Uuid, name  = Name, data = Data});
+            _ -> {error, already_exists}
+        end
+    end,
+    transaction(F).
+
+remove_data(Uuid, Name) ->
+    F = fun() ->
+        case get_data(Uuid, Name) of
+            {ok, Storage} ->
+                mnesia:delete_object(Storage);
+            {error, _} ->
+                {error, not_found}
+        end
+    end,
+    transaction(F).
+
+transaction(F) ->
+    mnesia:activity(transaction, F).
