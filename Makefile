@@ -24,6 +24,8 @@ shell:
 	(mkdir -p tmp)
 	erl +K true -sname $(NODENAME) -config config/$(NODE) -setcookie $(COOKIE) -pa apps/*/ebin deps/*/ebin -eval '[application:start(A) || A <- [kernel, crypto, lager, ranch, inets, sync, uuid, poolboy, mnesia]]'
 
-
-	
-
+bootstrap:
+	(mkdir -p tmp)
+	rebar get-deps
+	rebar compile
+	screen -S microstorage -d -m erl -sname microstorage -config config/microstorage.config -pa apps/*/ebin deps/*/ebin -eval '[application:start(A) || A <- [kernel,  asn1, crypto, public_key, mimetypes, lager, ranch, inets, ssl, sync, quickrand, uuid, mnesia, emysql, cowlib, cowboy, ibrowse, microstorage] ]' -s microstorage_db_srv install

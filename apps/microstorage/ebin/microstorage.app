@@ -5,6 +5,5 @@
               {applications,[kernel,stdlib]},
               {mod,{microstorage_app,[]}},
               {env,[]},
-              {modules,[microstorage_api_handler,microstorage_api_srv,
-                        microstorage_app,microstorage_db_srv,
-                        microstorage_sup]}]}.
+              {modules,[microstorage_api_handler,microstorage_app,
+                        microstorage_db_srv,microstorage_sup]}]}.
