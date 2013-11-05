@@ -17,7 +17,7 @@ clean:
 run:
 	(mkdir -p tmp)
 	rebar compile
-	erl -sname $(NODENAME)  -pa apps/*/ebin deps/*/ebin -eval '[application:start(A) || A <- [kernel,  asn1, crypto, public_key, mimetypes, lager, ranch, inets, ssl, sync, quickrand, uuid, mnesia, emysql, cowlib, cowboy, ibrowse, microstorage] ]'
+	erl -sname $(NODENAME) -config config/microstorage.config -pa apps/*/ebin deps/*/ebin -eval '[application:start(A) || A <- [kernel,  asn1, crypto, public_key, mimetypes, lager, ranch, inets, ssl, sync, quickrand, uuid, mnesia, emysql, cowlib, cowboy, ibrowse, microstorage] ]'
 
 shell:
 	rebar compile
