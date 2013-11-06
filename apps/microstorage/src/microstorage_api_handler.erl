@@ -41,11 +41,14 @@ check_path(Query) ->
 probe_query(Query) ->
   case Query of 
   [{<<"data">>, Data},{<<"key">>,Key},{<<"method">>,<<"SET">>},{<<"uuid">>,Uuid}] ->
-    microstorage_db:set_data(Uuid, Key, Data);
+    microstorage_db:set_data(Uuid, Key, jsx:decode(Data));
   [{<<"key">>,Key},{<<"method">>,Method},{<<"uuid">>,Uuid}] ->
     case Method of
       <<"GET">> ->
-        microstorage_db:get_data(Uuid, Key);
+        case microstorage_db:get_data(Uuid, Key) of 
+          {ok, Storage} -> {ok, storage_to_binary(Storage)};
+          Error -> Error
+        end;
       <<"DELETE">> ->
         microstorage_db:delete_data(Uuid, Key);
     _ -> 
@@ -54,6 +57,12 @@ probe_query(Query) ->
   _ -> 
     {error, wrong_query}
   end.
+
+storage_to_binary(Storage) ->
+  Uuid = Storage#storage.uuid,
+  Key = Storage#storage.key,
+  Data = Storage#storage.data,
+  [{<<"uuid">>, Uuid}, {<<"key">>, Key}, {<<"data">>, Data}].
 
 get(Query, _Options) ->
   case check_path(Query) of 
@@ -67,12 +76,7 @@ post(Entity, Query, _Options) ->
     [{path, <<"api">>}] ->
       case Entity of 
       [{<<"uuid">>,Uuid},{<<"key">>,Key},{<<"data">>, Data}] ->
-        Reply = gen_server:call(microstorage_db_srv, {<<"SET">>, Uuid, Key, Data}),
-        case Reply of 
-          ok -> {ok, [{<<"status">>, <<"ok">>}]};
-          _ ->
-            Reply          
-        end;
+        microstorage_db:set_data(Uuid, Key, Data);
       _ ->
         {error, wrong_json}
     end;
@@ -89,10 +93,7 @@ patch(_Changes, _Query, _Options) ->
 delete(Query, _Options) ->
   case Query of
   [{path,<<"api">>},{<<"key">>, Key},{<<"uuid">>,Uuid}] ->
-    case gen_server:call(microstorage_db_srv, {<<"DELETE">>, Uuid, Key}) of 
-      ok -> {ok, [{<<"status">>, <<"ok">>}]};
-      Error -> Error
-    end;
+    microstorage_db:delete_data(Uuid, Key);
   _ -> {error, format_error}
 end.
 

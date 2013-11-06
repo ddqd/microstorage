@@ -6,5 +6,5 @@
               {mod,{microstorage_app,[]}},
               {env,[]},
               {modules,[microstorage_api_handler,microstorage_app,
-                        microstorage_db,microstorage_db_srv,microstorage_sup,
-                        myapp_app,myapp_sup]}]}.
+                        microstorage_db,microstorage_sup,
+                        microstorage_ttl_srv]}]}.

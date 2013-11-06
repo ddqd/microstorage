@@ -1,12 +1,24 @@
 -module(microstorage_db).
  
--export([install/0, set_data/3, get_data/2, delete_data/2]).
+-export([install/0, set_data/3, get_data/2, delete_data/2, get_all/0, upd/1]).
 
 -include_lib("stdlib/include/qlc.hrl").
 
 -include("microstorage.hrl").
  
 %% Internal functions
+
+ -define(DEFAULT_TTL_SEC, 666).
+ -define(WITH_DEFAULT(X, Y), case X of
+                                undefined ->
+                                    {ok, Y};
+                                _ ->
+                                    X
+                            end).
+
+get_ttl() ->
+    {ok, TTL} = ?WITH_DEFAULT(application:get_env(microstorage, ttl_sec), ?DEFAULT_TTL_SEC),
+    TTL.
 
 create_table() ->
     case mnesia:create_table(storage,
@@ -40,7 +52,8 @@ get_data(Uuid, Key) ->
         case Res of 
             [] -> 
                 {error, not_found};
-            [Storage|_] -> 
+            [Storage|_] ->
+                reset_ttl(Storage), 
                 {ok, Storage}
         end
     end,
@@ -50,7 +63,7 @@ set_data(Uuid, Key, Data) ->
     F = fun() ->
         case get_data(Uuid, Key) of
             {error, not_found} -> 
-                case mnesia:write(#storage{uuid = Uuid, key  = Key, data = Data}) of 
+                case mnesia:write(#storage{uuid = Uuid, key  = Key, data = Data, ttl=get_ttl()}) of 
                     ok -> {ok, [{<<"status">>, <<"ok">>}]};
                     _ -> {error, write_error}
                 end;
@@ -74,11 +87,36 @@ delete_data(Uuid, Key) ->
     end,
     transaction(F).
 
+upd_ttl(Storage, Time) when Storage#storage.ttl > 0 ->
+        mnesia:write(Storage#storage{ttl = Storage#storage.ttl - Time});
+
+upd_ttl(Storage, _) when Storage#storage.ttl =< 0 ->
+        mnesia:delete_object(Storage).
+
+reset_ttl(Storage) ->
+    F = fun() ->
+        mnesia:write(Storage#storage{ttl=get_ttl()})   
+    end,
+    transaction(F).
+
+upd(Time) ->
+    F = fun() ->
+            Q = qlc:q(
+                [upd_ttl(Storage, Time) || Storage<- mnesia:table(storage)]
+            ), 
+            qlc:e(Q)
+    end,
+    transaction(F).
+
+get_all() ->
+    mnesia:transaction( 
+        fun() ->
+            qlc:eval( qlc:q(
+                [ X || X <- mnesia:table(storage)] 
+            )) 
+    end ).
+
 transaction(F) ->
     mnesia:activity(transaction, F).
 
-storage_to_binary(Storage) ->
-  Uuid = Storage#storage.uuid,
-  Key = Storage#storage.key,
-  Data = Storage#storage.data,
-  [{<<"uuid">>, Uuid}, {<<"key">>, Key}, {<<"data">>, Data}].
+

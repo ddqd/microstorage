@@ -1,1 +1,1 @@
--record(storage, {uuid, key=[], data=[]}).
+-record(storage, {uuid, key=[], data=[], ttl=0}).
