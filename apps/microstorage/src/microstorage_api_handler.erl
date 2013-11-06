@@ -41,9 +41,16 @@ check_path(Query) ->
 probe_query(Query) ->
   case Query of 
   [{<<"data">>, Data},{<<"key">>,Key},{<<"method">>,<<"SET">>},{<<"uuid">>,Uuid}] ->
-    gen_server:call(microstorage_db_srv, {<<"SET">>, Uuid, Key, jsx:decode(Data)});
+    microstorage_db:set_data(Uuid, Key, Data);
   [{<<"key">>,Key},{<<"method">>,Method},{<<"uuid">>,Uuid}] ->
-    gen_server:call(microstorage_db_srv, {Method, Uuid, Key});
+    case Method of
+      <<"GET">> ->
+        microstorage_db:get_data(Uuid, Key);
+      <<"DELETE">> ->
+        microstorage_db:delete_data(Uuid, Key);
+    _ -> 
+      {error, unknown_method}
+    end;
   _ -> 
     {error, wrong_query}
   end.
