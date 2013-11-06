@@ -30,24 +30,37 @@ allowed(_, none) ->
 allowed(_Method, {_Identity, _Scope}) ->
   true.
 
+check_path(Query) ->
+  [Head|Tail] = Query,
+  case Head of
+  {path,<<"api">>} ->
+    {ok, Tail};
+    _ -> {error, wrong_path}
+  end.
+
+probe_query(Query) ->
+  case Query of 
+  [{<<"data">>, Data},{<<"key">>,Key},{<<"method">>,<<"SET">>},{<<"uuid">>,Uuid}] ->
+    gen_server:call(microstorage_db_srv, {<<"SET">>, Uuid, Key, jsx:decode(Data)});
+  [{<<"key">>,Key},{<<"method">>,Method},{<<"uuid">>,Uuid}] ->
+    gen_server:call(microstorage_db_srv, {Method, Uuid, Key});
+  _ -> 
+    {error, wrong_query}
+  end.
+
 get(Query, _Options) ->
-  case Query of
-    [{path,<<"api">>},{<<"name">>, Name},{<<"uuid">>, Uuid}] ->
-      case gen_server:call(microstorage_db_srv, {get, Uuid, Name}) of 
-        {ok, Storage} ->
-          {ok, [{<<"status">>, <<"ok">>}]++storage(Storage)};
-        Error ->
-          Error
-      end;
-    _ -> {error, wrong_path} 
+  case check_path(Query) of 
+    {ok, Q} ->
+      probe_query(Q);
+    Error -> Error
   end.
 
 post(Entity, Query, _Options) ->
   case Query of
     [{path, <<"api">>}] ->
       case Entity of 
-      [{<<"uuid">>,Uuid},{<<"name">>,Name},{<<"data">>, Data}] ->
-        Reply = gen_server:call(microstorage_db_srv, {store, Uuid, Name, Data}),
+      [{<<"uuid">>,Uuid},{<<"key">>,Key},{<<"data">>, Data}] ->
+        Reply = gen_server:call(microstorage_db_srv, {<<"SET">>, Uuid, Key, Data}),
         case Reply of 
           ok -> {ok, [{<<"status">>, <<"ok">>}]};
           _ ->
@@ -68,8 +81,8 @@ patch(_Changes, _Query, _Options) ->
 
 delete(Query, _Options) ->
   case Query of
-  [{path,<<"api">>},{<<"name">>, Name},{<<"uuid">>,Uuid}] ->
-    case gen_server:call(microstorage_db_srv, {delete, Uuid, Name}) of 
+  [{path,<<"api">>},{<<"key">>, Key},{<<"uuid">>,Uuid}] ->
+    case gen_server:call(microstorage_db_srv, {<<"DELETE">>, Uuid, Key}) of 
       ok -> {ok, [{<<"status">>, <<"ok">>}]};
       Error -> Error
     end;
@@ -78,11 +91,3 @@ end.
 
 call(_, _, _) ->
   {ok, []}.
-
-storage(Storage) ->
-  Uuid = Storage#storage.uuid,
-  Name = Storage#storage.name,
-  Data = Storage#storage.data,
-  [{<<"uuid">>, Uuid}, {<<"name">>, Name}, {<<"data">>, Data}].
-
-

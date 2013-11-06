@@ -24,16 +24,20 @@ start_link() ->
 init([]) ->
     {ok, started}.
 
-handle_call({get, Uuid, Name}, _From, State) ->
-    Reply = get_data(Uuid, Name),
+handle_call({<<"GET">>, Uuid, Key}, _From, State) ->
+    Reply = case get_data(Uuid, Key) of 
+        {ok, Storage} -> 
+            {ok, storage_to_binary(Storage)};
+        _ -> {error, not_found}
+    end,
     {reply, Reply, State};
 
-handle_call({store, Uuid, Name, Data}, _From, State) ->
-    Reply = store_data(Uuid, Name, Data),
+handle_call({<<"SET">>, Uuid, Key, Data}, _From, State) ->
+    Reply = set_data(Uuid, Key, Data),
     {reply, Reply, State};
 
-handle_call({delete, Uuid, Name}, _From, State) ->
-    Reply = remove_data(Uuid, Name),
+handle_call({<<"DELETE">>, Uuid, Key}, _From, State) ->
+    Reply = remove_data(Uuid, Key),
     {reply, Reply, State};
 
 handle_call(_Request, _From, State) ->
@@ -61,7 +65,7 @@ create_table() ->
                     {ets, [compressed]}, 
                     {dets, [{auto_save, 3000}]} 
                 ]}, {disc_copies, [node()]}]) of
-        {aborted, {already_exists, Name}} -> lager:log(info, self(), "Table ~p Already Exist", [Name]);
+        {aborted, {already_exists, Key}} -> lager:log(info, self(), "Table ~p Already Exist", [Key]);
         {atomic,ok} -> lager:log(info, self(), "Table Created");
         {aborted, Reason} -> lager:log(error, self(), "Create table Error ~p", [Reason])
     end,
@@ -78,9 +82,9 @@ case  mnesia:create_schema([node()]) of
 end,
 ok.
 
-get_data(Uuid, Name) ->
+get_data(Uuid, Key) ->
     F = fun() ->   
-        Query = qlc:q([ Storage || Storage <- mnesia:table(storage), ((Storage#storage.uuid == Uuid) and (Storage#storage.name == Name))] ),
+        Query = qlc:q([ Storage || Storage <- mnesia:table(storage), ((Storage#storage.uuid == Uuid) and (Storage#storage.key == Key))] ),
         Res = qlc:e(Query),
         case Res of 
             [] -> 
@@ -91,22 +95,28 @@ get_data(Uuid, Name) ->
     end,
     transaction(F).
 
-store_data(Uuid, Name, Data) ->
+set_data(Uuid, Key, Data) ->
     F = fun() ->
-        case get_data(Uuid, Name) of
+        case get_data(Uuid, Key) of
             {error, not_found} -> 
-                mnesia:write(#storage{uuid = Uuid, name  = Name, data = Data});
+                case mnesia:write(#storage{uuid = Uuid, key  = Key, data = Data}) of 
+                    ok -> {ok, [{<<"status">>, <<"ok">>}]};
+                    _ -> {error, write_error}
+                end;
             _ -> 
                 {error, already_exists}
         end
     end,
     transaction(F).
 
-remove_data(Uuid, Name) ->
+remove_data(Uuid, Key) ->
     F = fun() ->
-        case get_data(Uuid, Name) of
+        case get_data(Uuid, Key) of
             {ok, Storage} ->
-                mnesia:delete_object(Storage);
+                case mnesia:delete_object(Storage) of 
+                    ok -> {ok, [{<<"status">>, <<"ok">>}]};
+                    _ -> {error, write_error}
+                end;
             {error, _} ->
                 {error, not_found}
         end
@@ -115,3 +125,9 @@ remove_data(Uuid, Name) ->
 
 transaction(F) ->
     mnesia:activity(transaction, F).
+
+storage_to_binary(Storage) ->
+  Uuid = Storage#storage.uuid,
+  Key = Storage#storage.key,
+  Data = Storage#storage.data,
+  [{<<"uuid">>, Uuid}, {<<"key">>, Key}, {<<"data">>, Data}].
