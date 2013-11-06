@@ -10,7 +10,7 @@
 ---
 ####Usage
 
-1. ` git clone https://github.com/ddqd/microstorage.git`
+1. `git clone https://github.com/ddqd/microstorage.git`
 2. `cd microstorage`
 3. `make bootstrap`
 4. `screen -ls` ->`PID.microstorage`
@@ -51,6 +51,9 @@
 `curl -X DELETE "localhost:8081/api/?uuid=a1&key=a"`
 `{"status":"ok"}`
 
+####TTL
 
-
+configure:  
+config file in `config/microstorage.config`  
+`{microstorage, [{ttl_sec, 600}, {upd_ttl_sec, 60}]}`
 > Written with [StackEdit](https://stackedit.io/).
