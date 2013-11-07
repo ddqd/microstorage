@@ -1,5 +1,6 @@
 NODE=microstorage
 HOST=localhost
+COOKIE = WOWSUCHSECRETWORD
 NODENAME=$(NODE)@$(HOST)
 
 all: reqs compile
@@ -17,7 +18,7 @@ clean:
 run:
 	(mkdir -p tmp)
 	rebar compile
-	erl -sname $(NODENAME) -config config/microstorage.config -pa apps/*/ebin deps/*/ebin -eval '[application:start(A) || A <- [kernel,  asn1, crypto, public_key, mimetypes, lager, ranch, inets, ssl, sync, quickrand, uuid, mnesia, emysql, cowlib, cowboy, ibrowse, microstorage] ]'
+	erl -sname $(NODENAME) -setcookie $(COOKIE) -config config/microstorage.config -pa apps/*/ebin deps/*/ebin -eval '[application:start(A) || A <- [kernel,  asn1, crypto, public_key, mimetypes, lager, ranch, inets, ssl, sync, quickrand, uuid, mnesia, emysql, cowlib, cowboy, ibrowse, microstorage] ]'
 
 shell:
 	rebar compile 	
@@ -28,4 +29,7 @@ bootstrap:
 	(mkdir -p tmp)
 	rebar get-deps
 	rebar compile
-	screen -S microstorage -d -m erl -sname microstorage -config config/microstorage.config -pa apps/*/ebin deps/*/ebin -eval '[application:start(A) || A <- [kernel,  asn1, crypto, public_key, mimetypes, lager, ranch, inets, ssl, sync, quickrand, uuid, mnesia, emysql, cowlib, cowboy, ibrowse, microstorage] ]' -s microstorage_db_srv install
+	screen -S microstorage -d -m erl -sname $(NODENAME) -setcookie $(COOKIE) -config config/microstorage.config -pa apps/*/ebin deps/*/ebin -eval '[application:start(A) || A <- [kernel,  asn1, crypto, public_key, mimetypes, lager, ranch, inets, ssl, sync, quickrand, uuid, mnesia, emysql, cowlib, cowboy, ibrowse, microstorage] ]' -s microstorage_db_srv install
+
+stop:
+	erl -sname cc@localhost -s mnesia -setcookie  $(COOKIE) -eval 'rpc:call($(NODENAME), init, stop, [])' -s init stop
